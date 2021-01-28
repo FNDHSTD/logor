@@ -16,36 +16,40 @@ type FileLogger struct {
 }
 
 //NewFileLogger 是一个生成文件日志结构体的构造函数
-func NewFileLogger(levelStr string, logFilePath, logFileName string) (fileLoggerPrinter *FileLogger) {
+func NewFileLogger(levelStr string, logFilePath, logFileName string) (*FileLogger, error) {
 	loglevel := translateLogLevel(levelStr)
-	fileLoggerPrinter = &FileLogger{
+	fileLogger := &FileLogger{
 		level:       loglevel,
 		logFileName: logFileName,
 		logFilePath: logFilePath,
 		maxSize:     10 * 1024 * 1024,
 	}
-	fileLoggerPrinter.initFileLogger()
-	return
+	err := fileLogger.initFileLogger()
+	if err != nil {
+		return nil, err
+	}
+	return fileLogger, nil
 }
 
 //用来初始化文件句柄
-func (f *FileLogger) initFileLogger() {
+func (f *FileLogger) initFileLogger() error {
 	//生成日志文件路径
 	filePath := fmt.Sprintf("%s%s", f.logFilePath, f.logFileName)
 	//打开日志文件
 	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
-		panic(fmt.Errorf("打开日志文件%s失败, %v", filePath, err))
+		// panic(fmt.Errorf("打开日志文件%s失败, %v", filePath, err))
+		return (fmt.Errorf("打开日志文件%s失败, %v", filePath, err))
 	}
 	f.logFile = file
-	return
+	return nil
 }
 
-func (f *FileLogger) log(level Level, format string, args ...interface{}) {
+func (f *FileLogger) log(level Level, format string, args ...interface{}) error {
 
-	//如果设置的日志级别大于DEBUG级别就不记录
+	//如果设置的日志级别大于本条日志的级别就不记录
 	if f.level > level {
-		return
+		return nil
 	}
 	msg := fmt.Sprintf(format, args...)
 
@@ -59,7 +63,10 @@ func (f *FileLogger) log(level Level, format string, args ...interface{}) {
 	logMsg := fmt.Sprintf("[%s][%s:%d][%s][%s] %s", now, fileName, line, funcName, getLevelStr(level), msg)
 
 	//往文件里写之前检查文件大小是否超过maxSize
-	fileInfo, _ := f.logFile.Stat()
+	fileInfo, err := f.logFile.Stat()
+	if err != nil {
+		return fmt.Errorf("获取日志文件大小失败, %v", err.Error())
+	}
 	fileSize := fileInfo.Size()
 
 	if fileSize >= f.maxSize {
@@ -71,38 +78,44 @@ func (f *FileLogger) log(level Level, format string, args ...interface{}) {
 		os.Rename(fileName, backupName)
 		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			panic(fmt.Errorf("打开日志文件失败"))
+			return fmt.Errorf("切分文件时, 打开新的日志文件失败")
 		}
 		f.logFile = file
 	}
 
 	//将日志信息写入日志文件
 	fmt.Fprintln(f.logFile, logMsg)
+	return nil
 }
 
 //Debug 记录日志
-func (f *FileLogger) Debug(format string, args ...interface{}) {
-	f.log(DEBUG, format, args...)
+func (f *FileLogger) Debug(format string, args ...interface{}) error {
+	return f.log(DEBUG, format, args...)
 }
 
 //Info 记录日志
-func (f *FileLogger) Info(format string, args ...interface{}) {
-	f.log(INFO, format, args...)
+func (f *FileLogger) Info(format string, args ...interface{}) error {
+	return f.log(INFO, format, args...)
 }
 
 //Warn 记录日志
-func (f *FileLogger) Warn(format string, args ...interface{}) {
-	f.log(WARN, format, args...)
+func (f *FileLogger) Warn(format string, args ...interface{}) error {
+	return f.log(WARN, format, args...)
 }
 
 //Error 记录日志
-func (f *FileLogger) Error(format string, args ...interface{}) {
-	f.log(ERROR, format, args...)
+func (f *FileLogger) Error(format string, args ...interface{}) error {
+	return f.log(ERROR, format, args...)
+}
+
+// Panic 记录日志
+func (f *FileLogger) Panic(format string, args ...interface{}) error {
+	return f.log(PANIC, format, args...)
 }
 
 //Fatal 记录日志
-func (f *FileLogger) Fatal(format string, args ...interface{}) {
-	f.log(FATAL, format, args...)
+func (f *FileLogger) Fatal(format string, args ...interface{}) error {
+	return f.log(FATAL, format, args...)
 }
 
 //Close 关闭日志文件

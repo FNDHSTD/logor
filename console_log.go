@@ -62,6 +62,11 @@ func (c *ConsoleLogger) Error(format string, args ...interface{}) {
 	c.log(ERROR, format, args...)
 }
 
+// Panic 记录日志
+func (c *ConsoleLogger) Panic(format string, args ...interface{}) {
+	c.log(PANIC, format, args...)
+}
+
 //Fatal 记录日志
 func (c *ConsoleLogger) Fatal(format string, args ...interface{}) {
 	c.log(FATAL, format, args...)
