@@ -1,4 +1,4 @@
-package mylogger
+package logor
 
 import "strings"
 
@@ -16,6 +16,7 @@ type Logger interface {
 	Info(format string, args ...interface{})
 	Warn(format string, args ...interface{})
 	Error(format string, args ...interface{})
+	Panic(format string, args ...interface{})
 	Fatal(format string, args ...interface{})
 	Close()
 }
@@ -26,6 +27,7 @@ const (
 	INFO
 	WARN
 	ERROR
+	PANIC
 	FATAL
 )
 
@@ -40,6 +42,8 @@ func getLevelStr(level Level) (levelStr string) {
 		return "WARN"
 	case ERROR:
 		return "ERROR"
+	case PANIC:
+		return "PANIC"
 	case FATAL:
 		return "FATAL"
 	default:
